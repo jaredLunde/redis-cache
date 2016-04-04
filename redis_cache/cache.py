@@ -1,7 +1,6 @@
 """
 
-  `Redis Cache`
-   Cache data in memory using Redis as a backend
+  `Cache`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde/redis-cache
