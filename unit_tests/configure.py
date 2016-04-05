@@ -44,10 +44,10 @@ class BaseTestCase(unittest.TestCase):
     pickle_cache = Cache(serializer=high_pickle)
     plain_cache = Cache(serialize=False)
 
-    def setup():
+    def setUp(self):
         setup(self)
 
-    def teardown():
+    def tearDown(self):
         cleanup(self)
 
     @staticmethod

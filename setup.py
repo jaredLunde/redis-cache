@@ -8,7 +8,7 @@ from pkgutil import walk_packages
 
 PKG = 'redis_cache'
 PKG_NAME = 'redis-cache'
-PKG_VERSION = '0.1.1'
+PKG_VERSION = '0.1.2'
 
 pathname = os.path.dirname(os.path.realpath(__file__))
 

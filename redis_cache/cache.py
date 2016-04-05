@@ -157,20 +157,20 @@ class Cache(RedisMap):
         keyname = '{}:{}'.format(self.key_prefix, name)
         return Lock(self._client, keyname,  expire=60, auto_renewal=True)
 
-    def get_lock(self, name):
+    def read_lock(self, name):
         """ Used as a context manager to avoid the dog-pile effect.
             ..
                 result = None
-                with rc.get_lock('some-key'):
+                with rc.read_lock('some-key'):
                     result = rc.get('some-key')
             ..
         """
         return self.lock(name + ':read')
 
-    def set_lock(self, name):
+    def write_lock(self, name):
         """ Used as a context manager to avoid the dog-pile effect.
             ..
-                with rc.set_lock('some-key'):
+                with rc.write_lock('some-key'):
                     result = rc.get('some-key')
                     if not result:
                         result = get_some_expensive_data()
@@ -189,7 +189,13 @@ class Cache(RedisMap):
         """ Sets the key and value pair to redis with given @ttl """
         if self._skip(value):
             return 0
-        return super().setex(str(key), value, ttl)
+        with self.write_lock(key):
+            r = self.get(key)
+            if r is None:
+                r = super().setex(str(key), value, ttl or self._ttl)
+            else:
+                r = None
+        return r
 
     def set(self, *kvs, ttl=0, **kwvs):
         """ Set multiple key/value pairs with the same ttl
@@ -317,11 +323,12 @@ class Cache(RedisMap):
                 try:
                     r = super(Cache, self).__getitem__(key)
                 except KeyError:
-                    with self.set_lock(key):
+                    with self.write_lock(key):
                         r = self.get(key)
-                        if not r:
+                        if r is None:
                             r = obj(*args, **kwargs)
-                            self.set(key, r, ttl)
+                            if not self._skip(r):
+                                super(Cache, self).setex(key, r, ttl or self._ttl)
                 return r
             return memoizer
         return keeper

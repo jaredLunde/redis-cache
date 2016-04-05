@@ -47,14 +47,14 @@ class TestCache(configure.BaseTestCase):
                         result = 'foobar'
                         self.assertTrue(self.cache.set('some-key', result))
 
-    def test_get_lock(self):
-        lock = self.cache.get_lock('some-key')
+    def test_read_lock(self):
+        lock = self.cache.read_lock('some-key')
         self.assertIsInstance(lock, redis_lock.Lock)
         self.assertEqual(lock._name,
                          'lock:redis-cache:bucket:1:some-key:read')
 
-    def test_set_lock(self):
-        lock = self.cache.set_lock('some-key')
+    def test_write_lock(self):
+        lock = self.cache.write_lock('some-key')
         self.assertIsInstance(lock, redis_lock.Lock)
         self.assertEqual(lock._name,
                          'lock:redis-cache:bucket:1:some-key:write')
