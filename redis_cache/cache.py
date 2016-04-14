@@ -102,7 +102,7 @@ class Cache(RedisMap):
         self._client_conn = client
         self._client_config = redis_config
         self._default = None
-        self.encoding = encoding
+        self.encoding = encoding or 'utf-8'
         self.decode_responses = decode_responses
 
         #: For cache
