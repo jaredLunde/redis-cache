@@ -4,7 +4,10 @@ python:
     - "3.4"
     - "3.5"
 before_install:
- - pip install -r requirements.txt
+  - pip install -r requirements.txt
+  - pip install codecov
 script: python unit_tests/run.py
 services:
-    - redis-server
+  - redis-server
+after_success:
+  - codecov
