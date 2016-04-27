@@ -328,7 +328,9 @@ class Cache(RedisMap):
                         if r is None:
                             r = obj(*args, **kwargs)
                             if not self._skip(r):
-                                super(Cache, self).setex(key, r, ttl or self._ttl)
+                                super(Cache, self).setex(key,
+                                                         r,
+                                                         ttl or self._ttl)
                 return r
             return memoizer
         return keeper
