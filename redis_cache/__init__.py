@@ -12,4 +12,4 @@ from redis_cache.cache import Cache, StrictRedis
 
 __author__ = 'Jared Lunde'
 __license__ = 'MIT'
-__version__ = '0.1.2'
+__version__ = '0.1.3'
