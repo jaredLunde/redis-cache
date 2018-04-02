@@ -1,10 +1,8 @@
 """
-
   `Cache`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde/redis-cache
-
 """
 import time
 import datetime
@@ -18,7 +16,7 @@ except ImportError:
     import json
 
 from vital.cache.decorators import high_pickle, cached_property
-from vital.debug import prepr, line, format_obj_name
+from vital.debug import preprX, line, format_obj_name
 from vital.tools.lists import pairwise, flatten
 
 from redis import StrictRedis
@@ -26,10 +24,66 @@ from redis_structures import RedisMap
 from redis_lock import Lock
 
 
-__all__ = ('StrictRedis', 'Cache',)
+__all__ = 'StrictRedis', 'Cache', 'BaseCache'
 
 
-class Cache(RedisMap):
+class BaseCache(object):
+    @cached_property
+    def _client(self):
+        """ Lazy loads the client connection """
+        client = self._client_conn or StrictRedis(**self._client_config)
+        if not self.encoding:
+            conn = client.connection_pool.get_connection("")
+            self.encoding = conn.encoding
+            client.connection_pool.release(conn)
+        return client
+
+    __repr__ = preprX('key_prefix', 'serialiazed', '_ttl')
+
+    def lock(self, name):
+        """ Used as a context manager to avoid the dog-pile effect.
+            ..
+            rc = Cache()
+            result = None
+            with rc.lock('get:some-key'):
+                result = rc.get('some-key')
+                if not result:
+                    with rc.lock('set:some-key'):
+                        result = rc.get('some-key')
+                        if not result:
+                            #: Do some expensive task here
+                            result = get_some_expensive_data()
+                            rc.set('some-key', result)
+            ..
+        """
+        keyname = '{}:{}'.format(self.key_prefix, name)
+        return Lock(self._client, keyname,  expire=60, auto_renewal=True)
+
+    def read_lock(self, name):
+        """ Used as a context manager to avoid the dog-pile effect.
+            ..
+                result = None
+                with rc.read_lock('some-key'):
+                    result = rc.get('some-key')
+            ..
+        """
+        return self.lock(name + ':read')
+
+    def write_lock(self, name):
+        """ Used as a context manager to avoid the dog-pile effect.
+            ..
+                with rc.write_lock('some-key'):
+                    result = rc.get('some-key')
+                    if not result:
+                        result = get_some_expensive_data()
+                        rc.set('some-key', result)
+                return result
+            ..
+        """
+        return self.lock(name + ':write')
+
+
+class Cache(RedisMap, BaseCache):
     """ =======================================================================
         ``Usage Example``
         ..
@@ -109,19 +163,6 @@ class Cache(RedisMap):
         self._ttl = ttl
         self.save_empty = save_empty
 
-    @cached_property
-    def _client(self):
-        """ Lazy loads the client connection """
-        client = self._client_conn or StrictRedis(**self._client_config)
-        if not self.encoding:
-            conn = client.connection_pool.get_connection("")
-            self.encoding = conn.encoding
-            client.connection_pool.release(conn)
-        return client
-
-    @prepr('key_prefix', 'serialiazed', '_ttl')
-    def __repr__(self): return
-
     def __setitem__(self, key, value):
         """ Set cache["key"] = value, persists to Redis right away with
             the default :prop:_ttl
@@ -137,48 +178,6 @@ class Cache(RedisMap):
     def __delitem__(self, key):
         """ Deletes cache["key"] """
         return super().__delitem__(str(key))
-
-    def lock(self, name):
-        """ Used as a context manager to avoid the dog-pile effect.
-            ..
-            rc = Cache()
-            result = None
-            with rc.lock('get:some-key'):
-                result = rc.get('some-key')
-                if not result:
-                    with rc.lock('set:some-key'):
-                        result = rc.get('some-key')
-                        if not result:
-                            #: Do some expensive task here
-                            result = get_some_expensive_data()
-                            rc.set('some-key', result)
-            ..
-        """
-        keyname = '{}:{}'.format(self.key_prefix, name)
-        return Lock(self._client, keyname,  expire=60, auto_renewal=True)
-
-    def read_lock(self, name):
-        """ Used as a context manager to avoid the dog-pile effect.
-            ..
-                result = None
-                with rc.read_lock('some-key'):
-                    result = rc.get('some-key')
-            ..
-        """
-        return self.lock(name + ':read')
-
-    def write_lock(self, name):
-        """ Used as a context manager to avoid the dog-pile effect.
-            ..
-                with rc.write_lock('some-key'):
-                    result = rc.get('some-key')
-                    if not result:
-                        result = get_some_expensive_data()
-                        rc.set('some-key', result)
-                return result
-            ..
-        """
-        return self.lock(name + ':write')
 
     def _skip(self, value):
         return (value is None or
