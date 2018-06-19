@@ -2,20 +2,21 @@
 import os
 import uuid
 from setuptools import setup
-from pip.req import parse_requirements
 from pkgutil import walk_packages
 
 
 PKG = 'redis_cache'
 PKG_NAME = 'redis-cache'
-PKG_VERSION = '0.1.3'
+PKG_VERSION = '0.1.5'
 
 pathname = os.path.dirname(os.path.realpath(__file__))
 
+def parse_requirements(filename):
+    """ load requirements from a pip requirements file """
+    lineiter = (line.strip() for line in open(filename))
+    return (line for line in lineiter if line and not line.startswith("#"))
 
-# parse_requirements() returns generator of pip.req.InstallRequirement objects
-install_reqs = parse_requirements(pathname + "/requirements.txt",
-                                  session=uuid.uuid1())
+install_reqs = parse_requirements(pathname + "/requirements.txt")
 
 
 def find_packages(prefix=""):
@@ -36,6 +37,6 @@ setup(
     author_email='jared.lunde@gmail.com',
     url='https://github.com/jaredlunde/redis-cache',
     license="MIT",
-    install_requires=[str(ir.req) for ir in install_reqs],
+    install_requires=list(install_reqs),
     packages=list(find_packages(PKG))
 )
